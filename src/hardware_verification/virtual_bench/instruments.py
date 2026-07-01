@@ -26,6 +26,8 @@ class VirtualInstrument(ABC):
 
 @dataclass
 class VirtualFunctionGenerator(VirtualInstrument):
+    _waveform_extra_settings = frozenset({"rise_time", "fall_time", "arbitrary_samples"})
+
     kind: str = "sine"
     frequency: float = 1_000.0
     amplitude: float = 1.0
@@ -36,10 +38,12 @@ class VirtualFunctionGenerator(VirtualInstrument):
 
     def configure(self, **kwargs: Any) -> None:
         for key, value in kwargs.items():
-            if hasattr(self, key):
+            if key in self._waveform_extra_settings:
+                self.extra[key] = value
+            elif hasattr(self, key) and key != "extra":
                 setattr(self, key, value)
             else:
-                self.extra[key] = value
+                raise AttributeError(f"unknown function generator setting: {key}")
 
     def set_waveform(self, kind: str, **kwargs: Any) -> None:
         self.kind = kind

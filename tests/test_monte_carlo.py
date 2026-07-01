@@ -25,3 +25,26 @@ def test_monte_carlo_reports_yield_and_sensitivity() -> None:
     assert len(records) == 25
     assert 0.0 <= summary.yield_pct <= 100.0
     assert "gain_delta" in summary.sensitivity
+
+
+def test_monte_carlo_gain_yield_is_not_corrupted_by_offset_sign() -> None:
+    def suite_factory(bench: VirtualBench) -> TestSuite:
+        return TestSuite(
+            "gain",
+            [GainTest(bench, TestSpec("gain", {"target_gain": 2.0, "gain_error_pct": 1.0}, {"kind": "sine", "frequency": 1_000.0, "amplitude": 0.5}))],
+        )
+
+    engine = MonteCarloEngine(
+        bench_factory=lambda params: VirtualBench(n_samples=20_000, sample_rate=1_000_000.0),
+        dut_factory=lambda params: AmplifierDUT(gain=2.0 + params["gain_delta"], offset=params["offset"]),
+        suite_factory=suite_factory,
+        variation_specs=[
+            VariationSpec("gain_delta", "dut", "gain", "gaussian", mean=0.0, sigma=0.005),
+            VariationSpec("offset", "dut", "offset", "gaussian", mean=0.0, sigma=0.001),
+        ],
+        seed=7,
+    )
+
+    _, summary = engine.run(50)
+
+    assert summary.yield_pct == 100.0

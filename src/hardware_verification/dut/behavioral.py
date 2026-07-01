@@ -16,12 +16,16 @@ class AmplifierDUT(DUT):
     noise_rms: float = 0.0
     seed: int | None = None
     _output: np.ndarray = field(default_factory=lambda: np.array([], dtype=float), init=False)
+    _rng: np.random.Generator = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._rng = np.random.default_rng(self.seed)
 
     def apply_input(self, signal: np.ndarray, sample_rate: float) -> None:
         del sample_rate
         values = np.asarray(signal, dtype=float) * self.gain + self.offset
         if self.noise_rms:
-            values = values + np.random.default_rng(self.seed).normal(0.0, self.noise_rms, size=values.shape)
+            values = values + self._rng.normal(0.0, self.noise_rms, size=values.shape)
         if self.saturation is not None:
             values = np.clip(values, -abs(self.saturation), abs(self.saturation))
         self._output = values
@@ -31,6 +35,7 @@ class AmplifierDUT(DUT):
 
     def reset(self) -> None:
         self._output = np.array([], dtype=float)
+        self._rng = np.random.default_rng(self.seed)
 
 
 @dataclass
@@ -39,13 +44,16 @@ class FIRFilterDUT(DUT):
     coefficient_variation: float = 0.0
     seed: int | None = None
     _output: np.ndarray = field(default_factory=lambda: np.array([], dtype=float), init=False)
+    _rng: np.random.Generator = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._rng = np.random.default_rng(self.seed)
 
     def apply_input(self, signal: np.ndarray, sample_rate: float) -> None:
         del sample_rate
         coeffs = np.asarray(self.coefficients, dtype=float)
         if self.coefficient_variation:
-            rng = np.random.default_rng(self.seed)
-            coeffs = coeffs + rng.normal(0.0, self.coefficient_variation, size=coeffs.shape)
+            coeffs = coeffs + self._rng.normal(0.0, self.coefficient_variation, size=coeffs.shape)
         self._output = np.convolve(np.asarray(signal, dtype=float), coeffs, mode="same")
 
     def get_output(self) -> np.ndarray:
@@ -53,6 +61,7 @@ class FIRFilterDUT(DUT):
 
     def reset(self) -> None:
         self._output = np.array([], dtype=float)
+        self._rng = np.random.default_rng(self.seed)
 
 
 @dataclass
@@ -87,6 +96,8 @@ class ADCModelDUT(DUT):
     _output: np.ndarray = field(default_factory=lambda: np.array([], dtype=float), init=False)
 
     def apply_input(self, signal: np.ndarray, sample_rate: float) -> None:
+        if not np.isclose(self.sample_rate, sample_rate):
+            raise ValueError("ADCModelDUT sample_rate must match the driving bench sample_rate")
         time = np.arange(len(signal), dtype=float) / sample_rate
         _, self._output = ADCModel(
             sample_rate=self.sample_rate,

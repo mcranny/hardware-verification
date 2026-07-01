@@ -23,3 +23,20 @@ def test_dmm_dc_voltage_tracks_known_signal_within_spec() -> None:
     measured = dmm.measure_dc_voltage(np.full(1_000, 1.234))
 
     assert measured == pytest.approx(1.234)
+
+
+def test_seeded_dmm_noise_advances_between_successive_measurements() -> None:
+    dmm = VirtualDMM(noise_floor=0.1, accuracy_pct_reading=0.0, accuracy_pct_range=0.0, seed=123)
+    samples = np.full(1_000, 1.234)
+
+    first = dmm.measure_dc_voltage(samples)
+    second = dmm.measure_dc_voltage(samples)
+
+    assert first != second
+
+
+def test_function_generator_rejects_unknown_settings() -> None:
+    bench = VirtualBench()
+
+    with pytest.raises(AttributeError, match="unknown function generator setting"):
+        bench.function_generator.configure(amplitdue=1.0)

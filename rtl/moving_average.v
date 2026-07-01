@@ -13,7 +13,10 @@ module moving_average #(
     reg signed [DATA_WIDTH-1:0] buffer [0:WINDOW_SIZE-1];
     reg [WINDOW_BITS-1:0] index;
     reg signed [DATA_WIDTH+WINDOW_BITS-1:0] sum;
+    wire signed [DATA_WIDTH+WINDOW_BITS-1:0] next_sum;
     integer i;
+
+    assign next_sum = sum - buffer[index] + sample_in;
 
     always @(posedge clk) begin
         if (rst) begin
@@ -25,10 +28,10 @@ module moving_average #(
                 buffer[i] <= 0;
             end
         end else if (sample_valid) begin
-            sum <= sum - buffer[index] + sample_in;
+            sum <= next_sum;
             buffer[index] <= sample_in;
             index <= index + 1'b1;
-            sample_out <= (sum - buffer[index] + sample_in) >>> WINDOW_BITS;
+            sample_out <= next_sum >>> WINDOW_BITS;
             output_valid <= 1;
         end else begin
             output_valid <= 0;
