@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -21,12 +21,18 @@ class VirtualDMM(VirtualInstrument):
     offset_error: float = 0.0
     gain_error: float = 0.0
     seed: int | None = None
+    _rng: np.random.Generator = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._rng = np.random.default_rng(self.seed)
 
     def configure(self, **kwargs: Any) -> None:
         for key, value in kwargs.items():
             if not hasattr(self, key):
                 raise AttributeError(f"unknown DMM setting: {key}")
             setattr(self, key, value)
+            if key == "seed":
+                self._rng = np.random.default_rng(self.seed)
 
     def measure(self) -> float:
         return self.measure_dc_voltage(np.array([0.0]))
@@ -54,11 +60,10 @@ class VirtualDMM(VirtualInstrument):
         return self._apply_error(float(np.mean(voltage_samples)) / current_amps, self.resistance_range)
 
     def reset(self) -> None:
-        self.seed = None
+        self._rng = np.random.default_rng(self.seed)
 
     def _apply_error(self, value: float, measurement_range: float) -> float:
-        rng = np.random.default_rng(self.seed)
         span_error = abs(value) * self.accuracy_pct_reading / 100.0
         range_error = measurement_range * self.accuracy_pct_range / 100.0
-        noise = rng.normal(0.0, self.noise_floor)
+        noise = self._rng.normal(0.0, self.noise_floor)
         return float((value + self.offset_error) * (1.0 + self.gain_error) + span_error + range_error + noise)

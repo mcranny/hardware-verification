@@ -33,3 +33,16 @@ def test_gain_test_fails_when_margin_exceeds_limit() -> None:
 
     assert not result.passed
     assert result.failed[0].measurements["gain_error_pct"] > 0.5
+
+
+def test_gain_test_uses_unpadded_output_for_negative_offset_boundary_case() -> None:
+    bench = VirtualBench(n_samples=20_000, sample_rate=1_000_000.0)
+    suite = TestSuite(
+        "amplifier",
+        [GainTest(bench, TestSpec("gain", {"target_gain": 2.0, "gain_error_pct": 1.0}, {"kind": "sine", "frequency": 1_000.0, "amplitude": 0.5}))],
+    )
+
+    result = suite.run_all(AmplifierDUT(gain=2.0, offset=-0.001))
+
+    assert result.passed
+    assert result.test_results[0].measurements["gain"] == 2.0

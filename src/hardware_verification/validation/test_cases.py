@@ -38,9 +38,8 @@ class InstrumentTest(ABC):
 
 class GainTest(InstrumentTest):
     def measure(self, signal_path) -> dict[str, float]:
-        record = self.bench.acquire_output(signal_path)
-        output_vpp = MeasurementEngine(record).vpp()
         input_vpp = float(np.max(signal_path.input_samples) - np.min(signal_path.input_samples))
+        output_vpp = float(np.max(signal_path.output_samples) - np.min(signal_path.output_samples))
         gain = output_vpp / input_vpp if input_vpp else float("nan")
         return {"gain": gain}
 

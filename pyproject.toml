@@ -9,7 +9,7 @@ authors = [{ name = "Matthew Cranny" }]
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
-    "scope-sim @ git+https://github.com/mcranny/scope-sim.git",
+    "scope-sim @ git+https://github.com/mcranny/scope-sim.git@073ed6320064b5e9c76434b06f42d75255d84764",
 ]
 
 [project.optional-dependencies]
