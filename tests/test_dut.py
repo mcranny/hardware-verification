@@ -13,15 +13,22 @@ def test_amplifier_gain_offset_and_saturation() -> None:
     np.testing.assert_allclose(dut.get_output(), [-1.0, 0.1, 0.9])
 
 
-def test_fir_and_moving_average_are_swappable_duts() -> None:
-    signal = np.array([0.0, 1.0, 0.0, 0.0])
+def test_fir_filter_applies_coefficients() -> None:
+    signal = np.array([1.0, 0.0, 0.0, 0.0])
     fir = FIRFilterDUT(coefficients=np.array([0.5, 0.5]))
-    avg = MovingAverageDUT(window_size=2)
 
     fir.apply_input(signal, 1_000.0)
+
+    np.testing.assert_allclose(fir.get_output(), [0.5, 0.5, 0.0, 0.0])
+
+
+def test_moving_average_uses_causal_window() -> None:
+    signal = np.array([0.0, 1.0, 0.0, 0.0])
+    avg = MovingAverageDUT(window_size=2)
+
     avg.apply_input(signal, 1_000.0)
 
-    np.testing.assert_allclose(fir.get_output(), avg.get_output())
+    np.testing.assert_allclose(avg.get_output(), [0.0, 0.5, 0.5, 0.0])
 
 
 def test_adc_model_dut_uses_scope_sim_adc() -> None:
@@ -58,6 +65,18 @@ def test_seeded_fir_variation_advances_between_successive_calls() -> None:
     dut.apply_input(signal, 1_000.0)
     first = dut.get_output()
     dut.apply_input(signal, 1_000.0)
+    second = dut.get_output()
+
+    assert not np.array_equal(first, second)
+
+
+def test_seeded_adc_noise_advances_between_successive_calls() -> None:
+    dut = ADCModelDUT(sample_rate=100_000.0, bits=12, full_scale=2.0, enob=8.0, seed=123)
+    signal = np.linspace(-0.5, 0.5, 256)
+
+    dut.apply_input(signal, 100_000.0)
+    first = dut.get_output()
+    dut.apply_input(signal, 100_000.0)
     second = dut.get_output()
 
     assert not np.array_equal(first, second)
