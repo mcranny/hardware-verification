@@ -14,9 +14,13 @@ module moving_average #(
     reg [WINDOW_BITS-1:0] index;
     reg signed [DATA_WIDTH+WINDOW_BITS-1:0] sum;
     wire signed [DATA_WIDTH+WINDOW_BITS-1:0] next_sum;
+    wire signed [DATA_WIDTH+WINDOW_BITS-1:0] old_sample;
+    wire signed [DATA_WIDTH+WINDOW_BITS-1:0] new_sample;
     integer i;
 
-    assign next_sum = sum - buffer[index] + sample_in;
+    assign old_sample = {{WINDOW_BITS{buffer[index][DATA_WIDTH-1]}}, buffer[index]};
+    assign new_sample = {{WINDOW_BITS{sample_in[DATA_WIDTH-1]}}, sample_in};
+    assign next_sum = sum - old_sample + new_sample;
 
     always @(posedge clk) begin
         if (rst) begin

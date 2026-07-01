@@ -16,6 +16,9 @@ def trial_records_to_rows(records: Iterable[TrialRecord]) -> list[dict[str, floa
             "suite_passed": record.result.passed,
         }
         base.update({f"param.{name}": value for name, value in record.parameters.items()})
+        if not record.result.test_results:
+            rows.append({**base, "test": "", "test_status": "", "test_passed": ""})
+            continue
         for test_result in record.result.test_results:
             row = {
                 **base,

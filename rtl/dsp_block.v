@@ -12,9 +12,11 @@ module dsp_block #(
 );
     wire signed [2*DATA_WIDTH-1:0] product;
     wire signed [2*DATA_WIDTH-1:0] scaled;
+    wire signed [2*DATA_WIDTH-1:0] offset_extended;
 
     assign product = sample_in * GAIN_Q15;
     assign scaled = product >>> 15;
+    assign offset_extended = {{DATA_WIDTH{OFFSET[DATA_WIDTH-1]}}, OFFSET};
 
     function signed [DATA_WIDTH-1:0] saturate;
         input signed [2*DATA_WIDTH-1:0] value;
@@ -22,7 +24,7 @@ module dsp_block #(
         reg signed [2*DATA_WIDTH-1:0] max_value;
         reg signed [2*DATA_WIDTH-1:0] min_value;
         begin
-            biased = value + OFFSET;
+            biased = value + offset_extended;
             max_value = (1 <<< (DATA_WIDTH - 1)) - 1;
             min_value = -(1 <<< (DATA_WIDTH - 1));
             if (biased > max_value) begin

@@ -9,10 +9,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install HDL tools
+        run: sudo apt-get update && sudo apt-get install -y iverilog verilator
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev,reporting,rtl,viz]"
       - name: Run tests
         run: pytest
+      - name: RTL syntax
+        run: iverilog -g2012 -tnull rtl/fir_filter.v rtl/moving_average.v rtl/dsp_block.v
+      - name: RTL lint
+        run: |
+          verilator --lint-only --timing -Wall --top-module fir_filter rtl/fir_filter.v
+          verilator --lint-only --timing -Wall --top-module moving_average rtl/moving_average.v
+          verilator --lint-only --timing -Wall --top-module dsp_block rtl/dsp_block.v
