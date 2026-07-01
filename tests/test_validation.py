@@ -1,8 +1,17 @@
 from __future__ import annotations
 
-from hardware_verification.dut import AmplifierDUT
-from hardware_verification.validation import DCOffsetTest, GainTest, NoiseTest, TestSpec, TestSuite
+from dataclasses import dataclass
+from pathlib import Path
+import shutil
+
+import numpy as np
+import pytest
+
+from hardware_verification.dut import AmplifierDUT, DUT, VerilogDUT
+from hardware_verification.validation import DCOffsetTest, GainTest, NoiseTest, PassFail, TestResult, TestSpec, TestSuite
 from hardware_verification.virtual_bench import VirtualBench
+
+RTL_ROOT = Path(__file__).resolve().parents[1] / "rtl"
 
 
 def test_suite_runs_gain_noise_and_offset_checks() -> None:
@@ -78,3 +87,27 @@ def test_noise_test_forces_zero_amplitude_stimulus() -> None:
     assert result.passed
     assert bench.function_generator.amplitude == 0.0
     assert bench.function_generator.offset == 0.0
+
+
+@dataclass
+class IntegerPassthroughTest:
+    bench: VirtualBench
+    spec: TestSpec
+
+    def run(self, dut: DUT) -> TestResult:
+        del self
+        signal = np.array([-200, -1, 0, 1, 200], dtype=int)
+        dut.apply_input(signal, 1_000_000.0)
+        passed = np.array_equal(dut.get_output(), signal)
+        return TestResult("rtl integer passthrough", PassFail.PASS if passed else PassFail.FAIL, {}, {})
+
+
+def test_suite_can_run_rtl_backed_dut_path() -> None:
+    if shutil.which("iverilog") is None or shutil.which("vvp") is None:
+        pytest.skip("Icarus Verilog is not installed")
+    suite = TestSuite("rtl", [IntegerPassthroughTest(VirtualBench(n_samples=8), TestSpec("rtl integer passthrough", {}))])
+    dut = VerilogDUT("fir_filter", [RTL_ROOT / "fir_filter.v"], parameters={"TAP_COUNT": 1, "COEFFS": [1]})
+
+    result = suite.run_all(dut)
+
+    assert result.passed
