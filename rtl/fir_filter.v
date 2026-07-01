@@ -17,6 +17,8 @@ module fir_filter #(
     localparam integer ACC_GUARD_BITS = (TAP_COUNT > 1) ? $clog2(TAP_COUNT) : 1;
     localparam integer ACC_WIDTH = OUTPUT_WIDTH + ACC_GUARD_BITS;
     localparam integer ADDR_WIDTH = (TAP_COUNT > 1) ? $clog2(TAP_COUNT) : 1;
+    localparam signed [ACC_WIDTH-1:0] SAT_MAX = {{(ACC_WIDTH-OUTPUT_WIDTH){1'b0}}, 1'b0, {(OUTPUT_WIDTH-1){1'b1}}};
+    localparam signed [ACC_WIDTH-1:0] SAT_MIN = {{(ACC_WIDTH-OUTPUT_WIDTH){1'b1}}, 1'b1, {(OUTPUT_WIDTH-1){1'b0}}};
     reg signed [DATA_WIDTH-1:0] delay_line [0:TAP_COUNT-1];
     reg signed [COEFF_WIDTH-1:0] coeffs [0:TAP_COUNT-1];
     wire [31:0] coeff_addr_wide;
@@ -41,14 +43,10 @@ module fir_filter #(
 
     function signed [OUTPUT_WIDTH-1:0] saturate;
         input signed [ACC_WIDTH-1:0] value;
-        reg signed [ACC_WIDTH-1:0] max_value;
-        reg signed [ACC_WIDTH-1:0] min_value;
         begin
-            max_value = {{(ACC_WIDTH-OUTPUT_WIDTH){1'b0}}, 1'b0, {(OUTPUT_WIDTH-1){1'b1}}};
-            min_value = {{(ACC_WIDTH-OUTPUT_WIDTH){1'b1}}, 1'b1, {(OUTPUT_WIDTH-1){1'b0}}};
-            if (value > max_value) begin
+            if (value > SAT_MAX) begin
                 saturate = {{1'b0, {{(OUTPUT_WIDTH-1){{1'b1}}}}}};
-            end else if (value < min_value) begin
+            end else if (value < SAT_MIN) begin
                 saturate = {{1'b1, {{(OUTPUT_WIDTH-1){{1'b0}}}}}};
             end else begin
                 saturate = value[OUTPUT_WIDTH-1:0];
