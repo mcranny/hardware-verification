@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from hardware_verification.dut import AmplifierDUT, FirstOrderLagDUT, MovingAverageDUT
 from hardware_verification.validation import FrequencyResponseTest, SettlingTimeTest, StepResponseTest, TestSpec, TestSuite
@@ -53,6 +54,27 @@ def test_settling_time_reports_real_dynamics() -> None:
     assert 100.0 < result.test_results[0].measurements["settling_time_us"] < 800.0
 
 
+def test_settling_time_preserves_explicit_zero_tolerance() -> None:
+    bench = VirtualBench(n_samples=20_000, sample_rate=1_000_000.0)
+    suite = TestSuite(
+        "settling",
+        [
+            SettlingTimeTest(
+                bench,
+                TestSpec(
+                    "settling",
+                    {"settling_time_us": 800.0},
+                    {"kind": "pulse", "frequency": 100.0, "amplitude": 1.0, "duty_cycle": 0.5},
+                    tolerance=0.0,
+                ),
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="tolerance must be positive"):
+        suite.run_all(FirstOrderLagDUT(time_constant=50e-6))
+
+
 def test_step_response_negative_offset_boundary_case_stays_sane() -> None:
     bench = VirtualBench(n_samples=20_000, sample_rate=1_000_000.0)
     suite = TestSuite(
@@ -95,6 +117,28 @@ def test_frequency_response_flat_amplifier_passes() -> None:
 
     assert result.passed
     assert result.test_results[0].measurements["max_deviation_db"] < 0.05
+
+
+def test_frequency_response_allows_default_frequency_in_stimulus_params() -> None:
+    bench = VirtualBench(n_samples=20_000, sample_rate=1_000_000.0)
+    suite = TestSuite(
+        "frequency",
+        [
+            FrequencyResponseTest(
+                bench,
+                TestSpec(
+                    "flat",
+                    {"frequencies_hz": [1_000.0, 10_000.0], "target_gain": 2.0, "max_deviation_db": 0.05},
+                    {"kind": "sine", "frequency": 123.0, "amplitude": 0.25},
+                ),
+            )
+        ],
+    )
+
+    result = suite.run_all(AmplifierDUT(gain=2.0))
+
+    assert result.passed
+    assert bench.function_generator.frequency == 10_000.0
 
 
 def test_frequency_response_filter_shows_rolloff() -> None:

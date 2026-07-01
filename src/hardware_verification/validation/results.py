@@ -31,7 +31,7 @@ class SuiteResult:
 
     @property
     def passed(self) -> bool:
-        return all(result.passed for result in self.test_results)
+        return bool(self.test_results) and all(result.passed for result in self.test_results)
 
     @property
     def failed(self) -> list[TestResult]:

@@ -35,6 +35,49 @@ def test_seeded_dmm_noise_advances_between_successive_measurements() -> None:
     assert first != second
 
 
+def test_dmm_accuracy_error_is_bounded_around_nominal_value() -> None:
+    dmm = VirtualDMM(
+        noise_floor=0.0,
+        accuracy_pct_reading=1.0,
+        accuracy_pct_range=0.0,
+        seed=123,
+    )
+
+    measured = dmm.measure_dc_voltage(np.full(1_000, 1.0))
+
+    assert 0.99 <= measured <= 1.01
+
+
+def test_ac_current_rms_applies_current_range_error_after_shunt_conversion() -> None:
+    dmm = VirtualDMM(
+        voltage_range=1_000_000.0,
+        current_range=1.0,
+        noise_floor=0.0,
+        accuracy_pct_reading=0.0,
+        accuracy_pct_range=0.0,
+    )
+    phase = np.linspace(0.0, 2.0 * np.pi, 10_000, endpoint=False)
+    voltage_samples = np.sin(phase)
+
+    measured = dmm.measure_ac_current_rms(voltage_samples, shunt_ohms=10.0)
+
+    assert measured == pytest.approx(np.sqrt(0.5) / 10.0)
+
+
+def test_ac_rms_measurements_do_not_report_negative_magnitudes() -> None:
+    dmm = VirtualDMM(
+        voltage_range=10.0,
+        noise_floor=0.0,
+        accuracy_pct_reading=0.0,
+        accuracy_pct_range=1.0,
+        seed=123,
+    )
+
+    measured = dmm.measure_ac_rms(np.zeros(1_000))
+
+    assert measured >= 0.0
+
+
 def test_function_generator_rejects_unknown_settings() -> None:
     bench = VirtualBench()
 

@@ -7,6 +7,8 @@ from typing import Any
 import numpy as np
 from scope_sim import AcquisitionRecord, MeasurementEngine, OscilloscopeEngine, WaveformGenerator
 
+WAVEFORM_EXTRA_SETTINGS = frozenset({"rise_time", "fall_time", "arbitrary_samples"})
+
 
 class VirtualInstrument(ABC):
     """Common interface for virtual bench instruments."""
@@ -26,8 +28,6 @@ class VirtualInstrument(ABC):
 
 @dataclass
 class VirtualFunctionGenerator(VirtualInstrument):
-    _waveform_extra_settings = frozenset({"rise_time", "fall_time", "arbitrary_samples"})
-
     kind: str = "sine"
     frequency: float = 1_000.0
     amplitude: float = 1.0
@@ -38,7 +38,7 @@ class VirtualFunctionGenerator(VirtualInstrument):
 
     def configure(self, **kwargs: Any) -> None:
         for key, value in kwargs.items():
-            if key in self._waveform_extra_settings:
+            if key in WAVEFORM_EXTRA_SETTINGS:
                 self.extra[key] = value
             elif hasattr(self, key) and key != "extra":
                 setattr(self, key, value)

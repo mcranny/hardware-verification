@@ -38,6 +38,7 @@ class InstrumentTest(ABC):
 
 class GainTest(InstrumentTest):
     def measure(self, signal_path) -> dict[str, float]:
+        # Vpp gain rejects DC offsets, so offset sensitivity belongs in DCOffsetTest.
         input_vpp = float(np.max(signal_path.input_samples) - np.min(signal_path.input_samples))
         output_vpp = float(np.max(signal_path.output_samples) - np.min(signal_path.output_samples))
         gain = output_vpp / input_vpp if input_vpp else float("nan")
@@ -52,6 +53,10 @@ class GainTest(InstrumentTest):
 
 
 class NoiseTest(InstrumentTest):
+    def _configure_stimulus(self) -> None:
+        params = {**self.spec.stimulus_params, "amplitude": 0.0, "offset": 0.0}
+        self.bench.function_generator.configure(**params)
+
     def measure(self, signal_path) -> dict[str, float]:
         noise_rms = self.bench.dmm.measure_ac_rms(signal_path.output_samples)
         return {"noise_rms": noise_rms, "noise_rms_mv": noise_rms * 1_000.0}
@@ -76,7 +81,8 @@ class DCOffsetTest(InstrumentTest):
 class SettlingTimeTest(InstrumentTest):
     def measure(self, signal_path) -> dict[str, float]:
         record = self.bench.acquire_output(signal_path)
-        settling_time = MeasurementEngine(record).settling_time(self.spec.tolerance or 0.02)
+        tolerance = self.spec.tolerance if self.spec.tolerance is not None else 0.02
+        settling_time = MeasurementEngine(record).settling_time(tolerance)
         return {"settling_time": settling_time, "settling_time_us": settling_time * 1_000_000.0}
 
     def evaluate(self, measurements: dict[str, float]) -> TestResult:
@@ -109,8 +115,9 @@ class FrequencyResponseTest(InstrumentTest):
         target_gain = self.spec.pass_criteria["target_gain"]
         max_deviation_db = 0.0
         for frequency in frequencies:
-            self.bench.function_generator.configure(**self.spec.stimulus_params, frequency=frequency)
+            self.bench.function_generator.configure(**{**self.spec.stimulus_params, "frequency": frequency})
             signal_path = self.bench.drive(dut)
+            # Vpp gain rejects DC offsets, so this sweep reports amplitude response only.
             input_vpp = float(np.max(signal_path.input_samples) - np.min(signal_path.input_samples))
             output_vpp = float(np.max(signal_path.output_samples) - np.min(signal_path.output_samples))
             gain = output_vpp / input_vpp if input_vpp else float("nan")

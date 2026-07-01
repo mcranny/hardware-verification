@@ -43,11 +43,17 @@ class MonteCarloEngine:
         records: list[TrialRecord] = []
         for index in range(trials):
             params = {spec.name: spec.sample(rng) for spec in self.variation_specs}
-            bench = self.bench_factory(params)
-            dut = self.dut_factory(params)
+            bench = self.bench_factory(self._target_params(params, "bench"))
+            dut = self.dut_factory(self._target_params(params, "dut"))
             suite = self.suite_factory(bench)
-            records.append(TrialRecord(index, params, suite.run_all(dut)))
+            result = suite.run_all(dut)
+            if not result.test_results:
+                raise ValueError("test suite produced no test results")
+            records.append(TrialRecord(index, params, result))
         return records, self.summarize(records)
+
+    def _target_params(self, params: dict[str, float], target: str) -> dict[str, float]:
+        return {spec.name: params[spec.name] for spec in self.variation_specs if spec.target == target}
 
     def summarize(self, records: list[TrialRecord]) -> MonteCarloSummary:
         passed = sum(record.result.passed for record in records)

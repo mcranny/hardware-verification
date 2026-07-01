@@ -99,8 +99,9 @@ class MovingAverageDUT(DUT):
         del sample_rate
         if self.window_size <= 0:
             raise ValueError("window_size must be positive")
+        values = np.asarray(signal, dtype=float)
         kernel = np.ones(self.window_size, dtype=float) / self.window_size
-        self._output = np.convolve(np.asarray(signal, dtype=float), kernel, mode="same")
+        self._output = np.convolve(values, kernel, mode="full")[: values.size]
 
     def get_output(self) -> np.ndarray:
         return self._output.copy()
@@ -120,11 +121,16 @@ class ADCModelDUT(DUT):
     aperture_jitter: float = 0.0
     seed: int | None = None
     _output: np.ndarray = field(default_factory=lambda: np.array([], dtype=float), init=False)
+    _rng: np.random.Generator = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._rng = np.random.default_rng(self.seed)
 
     def apply_input(self, signal: np.ndarray, sample_rate: float) -> None:
         if not np.isclose(self.sample_rate, sample_rate):
             raise ValueError("ADCModelDUT sample_rate must match the driving bench sample_rate")
         time = np.arange(len(signal), dtype=float) / sample_rate
+        adc_seed = None if self.seed is None else int(self._rng.integers(0, np.iinfo(np.uint32).max))
         _, self._output = ADCModel(
             sample_rate=self.sample_rate,
             bits=self.bits,
@@ -133,7 +139,7 @@ class ADCModelDUT(DUT):
             offset_error=self.offset_error,
             enob=self.enob,
             aperture_jitter=self.aperture_jitter,
-            seed=self.seed,
+            seed=adc_seed,
         ).convert(time, np.asarray(signal, dtype=float))
 
     def get_output(self) -> np.ndarray:
@@ -141,6 +147,7 @@ class ADCModelDUT(DUT):
 
     def reset(self) -> None:
         self._output = np.array([], dtype=float)
+        self._rng = np.random.default_rng(self.seed)
 
 
 @dataclass
