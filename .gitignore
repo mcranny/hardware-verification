@@ -1,4 +1,5 @@
 .pytest_cache/
+.coverage
 .ruff_cache/
 __pycache__/
 *.py[cod]
@@ -9,3 +10,4 @@ dist/
 reports/generated/
 rtl/sim_build/
 results.xml
+*.result.xml

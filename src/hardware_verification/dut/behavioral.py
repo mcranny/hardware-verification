@@ -65,6 +65,32 @@ class FIRFilterDUT(DUT):
 
 
 @dataclass
+class FirstOrderLagDUT(DUT):
+    time_constant: float
+    gain: float = 1.0
+    _output: np.ndarray = field(default_factory=lambda: np.array([], dtype=float), init=False)
+
+    def apply_input(self, signal: np.ndarray, sample_rate: float) -> None:
+        if sample_rate <= 0:
+            raise ValueError("sample_rate must be positive")
+        if self.time_constant <= 0:
+            raise ValueError("time_constant must be positive")
+        alpha = 1.0 - np.exp(-1.0 / (sample_rate * self.time_constant))
+        output = np.empty_like(np.asarray(signal, dtype=float))
+        state = 0.0
+        for index, value in enumerate(np.asarray(signal, dtype=float) * self.gain):
+            state += alpha * (value - state)
+            output[index] = state
+        self._output = output
+
+    def get_output(self) -> np.ndarray:
+        return self._output.copy()
+
+    def reset(self) -> None:
+        self._output = np.array([], dtype=float)
+
+
+@dataclass
 class MovingAverageDUT(DUT):
     window_size: int = 8
     _output: np.ndarray = field(default_factory=lambda: np.array([], dtype=float), init=False)

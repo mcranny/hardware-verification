@@ -1,5 +1,5 @@
 from .base import DUT
-from .behavioral import ADCModelDUT, AmplifierDUT, FIRFilterDUT, MovingAverageDUT, SignalProcessingChainDUT
+from .behavioral import ADCModelDUT, AmplifierDUT, FIRFilterDUT, FirstOrderLagDUT, MovingAverageDUT, SignalProcessingChainDUT
 from .rtl import VerilogDUT
 
 __all__ = [
@@ -7,6 +7,7 @@ __all__ = [
     "AmplifierDUT",
     "DUT",
     "FIRFilterDUT",
+    "FirstOrderLagDUT",
     "MovingAverageDUT",
     "SignalProcessingChainDUT",
     "VerilogDUT",

@@ -14,7 +14,7 @@ class TestSuite:
 
     name: str
     tests: list[InstrumentTest] = field(default_factory=list)
-    continue_on_failure: bool = True
+    stop_on_critical_failure: bool = True
 
     def add(self, test: InstrumentTest) -> None:
         self.tests.append(test)
@@ -24,6 +24,6 @@ class TestSuite:
         for test in self.tests:
             result = test.run(dut)
             results.append(result)
-            if not result.passed and test.spec.critical and not self.continue_on_failure:
+            if not result.passed and test.spec.critical and self.stop_on_critical_failure:
                 break
         return SuiteResult(self.name, results)

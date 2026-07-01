@@ -81,3 +81,20 @@ def test_trial_records_write_csv(tmp_path) -> None:
     assert rows[0]["trial"] == "0"
     assert rows[0]["suite"] == "gain"
     assert rows[0]["test_status"] in {"PASS", "FAIL"}
+
+
+def test_trial_records_export_empty_suite_rows() -> None:
+    records, _ = MonteCarloEngine(
+        bench_factory=lambda params: VirtualBench(),
+        dut_factory=lambda params: AmplifierDUT(),
+        suite_factory=lambda bench: TestSuite("empty"),
+        variation_specs=[VariationSpec("gain_delta", "dut", "gain", "constant", value=0.0)],
+        seed=42,
+    ).run(2)
+
+    rows = trial_records_to_rows(records)
+
+    assert len(rows) == 2
+    assert rows[0]["test"] == ""
+    assert rows[0]["test_status"] == ""
+    assert rows[0]["suite_passed"] is True

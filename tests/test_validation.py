@@ -46,3 +46,21 @@ def test_gain_test_uses_unpadded_output_for_negative_offset_boundary_case() -> N
 
     assert result.passed
     assert result.test_results[0].measurements["gain"] == 2.0
+
+
+def test_critical_failure_stops_suite_by_default() -> None:
+    bench = VirtualBench(n_samples=20_000)
+    suite = TestSuite(
+        "critical",
+        [
+            GainTest(
+                bench,
+                TestSpec("critical gain", {"target_gain": 2.0, "gain_error_pct": 0.5}, {"kind": "sine", "amplitude": 0.5}, critical=True),
+            ),
+            NoiseTest(bench, TestSpec("noise", {"noise_rms_mv": 1_420.0}, {"kind": "sine", "amplitude": 0.5})),
+        ],
+    )
+
+    result = suite.run_all(AmplifierDUT(gain=1.8))
+
+    assert [test.name for test in result.test_results] == ["critical gain"]
